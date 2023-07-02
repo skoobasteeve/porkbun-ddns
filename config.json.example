@@ -1,0 +1,9 @@
+{
+    "records": [
+        {
+            "domain": "domain.example",
+            "subdomains": ["sub1", "sub2"]
+        }
+    ]
+    
+}
