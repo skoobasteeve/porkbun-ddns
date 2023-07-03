@@ -18,6 +18,7 @@ def get_public_ip(url: str, headers: dict, body: dict):
         public_ip = request.json()["yourIp"]
     else:
         public_ip = "ERROR"
+        raise Exception(request.json())
     
     return public_ip
 
@@ -32,6 +33,7 @@ def get_records(url: str, headers: dict, body: dict, domain: str):
         records = [r for r in records if r["type"] == "A"]
     else:
         records = "ERROR"
+        raise Exception(request.json())
     
     return records
 
@@ -56,9 +58,12 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
     body["content"] = ip
     body["ttl"] = "600"
 
-    request = requests.post(url=f"{url}/dns/editByNameType/{domain}/A/{subdomain}",
-                            headers=headers, json=body)
-    request.raise_for_status
+    try:
+        request = requests.post(url=f"{url}/dns/editByNameType/{domain}/A/{subdomain}",
+                                headers=headers, json=body)
+        request.raise_for_status()
+    except Exception as x:
+        return x
 
     return request.json()["status"]
 
@@ -88,11 +93,14 @@ def main():
                                             ip=public_ip)
         records_to_update = r_to_update + records_to_update
     
-    for r in records_to_update:
-        result = update_record(url=porkbun_url, headers=headers, body=body,
-                               domain=r["domain"], subdomain=r["subdomain"],
-                               ip=public_ip)
-        print(r["domain"], r["subdomain"], result)
+    if records_to_update:
+        for r in records_to_update:
+            result = update_record(url=porkbun_url, headers=headers, body=body,
+                                domain=r["domain"], subdomain=r["subdomain"],
+                                ip=public_ip)
+            print(r["domain"], r["subdomain"], "Result:", result)
+    else:
+        print("No records to update.")
     
 
 if __name__ == "__main__":
