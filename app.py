@@ -2,11 +2,8 @@
 
 import requests
 import json
-import os
 
 porkbun_url = "https://porkbun.com/api/json/v3"
-api_key = os.environ.get("PORKBUN_API_KEY")
-secret_api_key = os.environ.get("PORKBUN_SECRET_API_KEY")
 config_file = "config.json"
 
 
@@ -38,8 +35,8 @@ def get_records(url: str, headers: dict, body: dict, domain: str):
     return records
 
 
-def compare_records(domain: str, subdomains: list, current_records: dict,
-                    ip: str):
+def compare_records(domain: str, current_records: dict,
+                    ip: str, subdomains: list, update_root: bool = False) -> list:
     to_update = []
     for sub in subdomains:
         records = [r for r in current_records if r["name"] == f"{sub}.{domain}"]
@@ -48,6 +45,15 @@ def compare_records(domain: str, subdomains: list, current_records: dict,
             if r["content"] != ip:
                 record_dict["domain"] = domain
                 record_dict["subdomain"] = sub
+                to_update.append(record_dict)
+
+    if update_root:
+        records = [r for r in current_records if r["name"] == f"{domain}"]
+        for r in records:
+            record_dict = {}
+            if r["content"] != ip:
+                record_dict["domain"] = domain
+                record_dict["subdomain"] = ""
                 to_update.append(record_dict)
     
     return to_update
@@ -69,9 +75,12 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
 
 
 def main():
+    with open(config_file, 'r') as f:
+        config_data = json.load(f)
+
     body = {
-        "apikey": api_key,
-        "secretapikey": secret_api_key
+        "apikey": config_data['api_key'],
+        "secretapikey": config_data['secret_key']
     }
     headers = {
         "Accept": "application/json",
@@ -80,9 +89,6 @@ def main():
 
     public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body)
 
-    with open(config_file, 'r') as f:
-        config_data = json.load(f)
-
     records_to_update = []
     for r in config_data["records"]:
         current_records = get_records(url=porkbun_url, headers=headers, body=body,
@@ -90,9 +96,9 @@ def main():
         r_to_update = compare_records(domain=r["domain"],
                                             subdomains=r["subdomains"],
                                             current_records=current_records,
-                                            ip=public_ip)
+                                            ip=public_ip, update_root=r["update_root"])
         records_to_update = r_to_update + records_to_update
-    
+
     if records_to_update:
         for r in records_to_update:
             result = update_record(url=porkbun_url, headers=headers, body=body,
@@ -101,9 +107,7 @@ def main():
             print(r["domain"], r["subdomain"], "Result:", result)
     else:
         print("No records to update.")
-    
+
 
 if __name__ == "__main__":
     main()
-
-
