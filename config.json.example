@@ -1,8 +1,16 @@
 {
+    "api_key": "",
+    "secret_key": "",
     "records": [
         {
-            "domain": "domain.example",
-            "subdomains": ["sub1", "sub2"]
+            "domain": "domain01",
+            "subdomains": ["sub01", "sub02", "sub03"],
+            "update_root": true
+        },
+        {
+            "domain": "domain02",
+            "subdomains": ["sub01", "sub02"],
+            "update_root": false
         }
     ]
     
