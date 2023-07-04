@@ -2,9 +2,10 @@
 
 import requests
 import json
+import sys
 
 porkbun_url = "https://porkbun.com/api/json/v3"
-config_file = "config.json"
+config_file = f"{sys.path[0]}/config.json"
 
 
 def get_public_ip(url: str, headers: dict, body: dict) -> str:
