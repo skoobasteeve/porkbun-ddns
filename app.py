@@ -3,9 +3,13 @@
 import requests
 import json
 import sys
+import logging
 
 porkbun_url = "https://porkbun.com/api/json/v3"
 config_file = f"{sys.path[0]}/config.json"
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
 
 
 def get_public_ip(url: str, headers: dict, body: dict) -> str:
@@ -71,7 +75,7 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
                                 headers=headers, json=body)
         request.raise_for_status()
     except Exception as x:
-        return str(x)
+        return str(f"Exception: {x}")
 
     return request.json()["status"]
 
@@ -109,9 +113,12 @@ def main():
                                    domain=r["domain"],
                                    subdomain=r["subdomain"],
                                    ip=public_ip)
-            print(r["domain"], r["subdomain"], "Result:", result)
+            if "Exception:" in result:
+                logging.error(f"{r['domain']} {r['subdomain']} {result}")
+            else:
+                logging.info(f"{r['domain']} {r['subdomain']} {result}")
     else:
-        print("No records to update.")
+        logging.info("No records to update.")
 
 
 if __name__ == "__main__":
