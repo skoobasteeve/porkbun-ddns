@@ -7,7 +7,7 @@ import logging
 import os
 
 porkbun_url = "https://porkbun.com/api/json/v3"
-config_file = f"{sys.path[0]}/config_test.json"
+config_file = f"{sys.path[0]}/config.json"
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
