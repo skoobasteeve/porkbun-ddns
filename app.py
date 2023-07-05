@@ -143,10 +143,15 @@ def main():
                                    domain=r["domain"],
                                    subdomain=r["subdomain"],
                                    ip=public_ip)
-            if "Exception:" in result:
-                logging.error(f"{r['domain']} {r['subdomain']} {result}")
+            if r['subdomain']:
+                log_str = f"{r['subdomain']}.{r['domain']} {result}"
             else:
-                logging.info(f"{r['domain']} {r['subdomain']} {result}")
+                log_str = f"{r['domain']} {result}"
+
+            if "Exception:" in result:
+                logging.error(log_str)
+            else:
+                logging.info(log_str)
     else:
         logging.info("All records are up-to-date.")
 
