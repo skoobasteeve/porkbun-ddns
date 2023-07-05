@@ -4,7 +4,7 @@ Minimal Dynamic DNS client for Porkbun.
 
 ## How to use
 
-Create a file named `config.json` based on [config.json.example](config.json.example) in this repo and update it with the below information:
+Create a file named `config.json` based on [config_example.json](config_example.json) in this repo and update it with the below information:
 - `api_key` - Porkbun API key
 - `secret_key` - Porkbun API secret key
 - At least one domain block within `records` similar to the below:
