@@ -11,23 +11,27 @@ Create a file named `config.json` based on [config.json.example](config.json.exa
   ``` json
   "records": [
     {
-      "domain": "example.com", // root domain
-      "subdomains": ["subdomain01", "subdomain02", "subdomain03"], // subdomains
-      "update_root": true // if set to true, will also update the @ record for the root domain
+      "domain": "example.com",
+      "subdomains": ["subdomain01", "subdomain02", "subdomain03"],
+      "update_root": true
     }
   ]
   ```
+- `records.domain` - *str* - Root domain name
+- `records.subdomain` - *list* - Comma-separated list of subdomains
+- `records.update_root` - *bool* - If set to `true`, the script will update the root domain in addition to the subdomains.
+
 
 ### Docker
 
 The container checks for DNS updates every 5 minutes or whenever it's restarted. Mount a valid `config.json` as a volume and you're good-to-go.
 
-**One-liner:**
+**One-liner**
 ``` shell
 docker run --init --detach --volume $PWD/config.json:/usr/src/app/config.json:z skoobasteeve/porkbun-ddns:main
 ```
 
-**Docker compose:**
+**Docker compose**
 ``` yaml
 ---
 version: "3.7"
