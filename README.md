@@ -58,7 +58,7 @@ You can also run the script directly with your local Python interpreter.
    cd porkbun-ddns
    pip install -r requirements.txt
    ```
-3. Create a `config.json` and add the [required information](#how-to-run). It should be located in the same directory as the script.
+3. Create a `config.json` and add the [required information](#how-to-use). It should be located in the same directory as the script.
 4. Run the script.
    ``` shell
    python ./app.py
