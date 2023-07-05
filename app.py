@@ -4,12 +4,39 @@ import requests
 import json
 import sys
 import logging
+import os
 
 porkbun_url = "https://porkbun.com/api/json/v3"
-config_file = f"{sys.path[0]}/config.json"
+config_file = f"{sys.path[0]}/config_test.json"
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
+
+
+def validate_config(config_file):
+    if not os.path.isfile(config_file):
+        logging.error("config.json not found! Exiting...")
+        sys.exit(1)
+
+    try:
+        with open(config_file, 'r') as f:
+            config_data = json.load(f)
+    except json.decoder.JSONDecodeError as x:
+        logging.error(f"Invalid JSON in config.json: {x}")
+        logging.error("Exiting...")
+        exit(1)
+
+    api_key = config_data.get('api_key', {})
+    secret_key = config_data.get('secret_key', {})
+
+    if not api_key:
+        logging.error("Porkbun API key not specified in config.json. " +
+                      "Exiting...")
+        sys.exit(1)
+    if not secret_key:
+        logging.error("Porkbun API secret key not specified in config.json. " +
+                      "Exiting...")
+        sys.exit(1)
 
 
 def get_public_ip(url: str, headers: dict, body: dict) -> str:
@@ -81,6 +108,9 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
 
 
 def main():
+
+    validate_config(config_file)
+
     with open(config_file, 'r') as f:
         config_data = json.load(f)
 
