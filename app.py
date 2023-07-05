@@ -148,7 +148,7 @@ def main():
             else:
                 logging.info(f"{r['domain']} {r['subdomain']} {result}")
     else:
-        logging.info("No records to update.")
+        logging.info("All records are up-to-date.")
 
 
 if __name__ == "__main__":
