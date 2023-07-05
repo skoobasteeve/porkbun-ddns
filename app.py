@@ -1,5 +1,27 @@
 #!/usr/bin/env python
 
+'''
+A simple Dynamic DNS script for Porkbun - https://porkbun.com
+
+To run:
+1. Generate API credentials for your Porkbun account.
+2. Ensure that any domains you want to update have "API Access" turned
+   on in the Porkbun domain management console.
+3. Create a file called 'config.json' and, using 'config.json.example'
+   as a reference, add your API credentials and any domains you wish
+   to keep updated. This file should be in the same location as the script.
+4. Run the script: python ./app.py
+5. (optional) Create a cron job or systemd timer to run the script on a
+   schedule.
+
+For Docker environments, you can also use the pre-baked Docker image:
+https://hub.docker.com/repository/docker/skoobasteeve/porkbun-ddns
+
+More info:
+https://github.com/skoobasteeve/porkbun-ddns
+
+'''
+
 import requests
 import json
 import sys
@@ -13,11 +35,14 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 
+# Check for any issues related to the provided configuration file
 def validate_config(config_file):
+    # Check if config.json exists
     if not os.path.isfile(config_file):
         logging.error("config.json not found! Exiting...")
         sys.exit(1)
 
+    # Check if the file contains valid JSON
     try:
         with open(config_file, 'r') as f:
             config_data = json.load(f)
@@ -26,9 +51,9 @@ def validate_config(config_file):
         logging.error("Exiting...")
         sys.exit(1)
 
+    # Check that API credentials are provided in the file
     api_key = config_data.get('api_key', {})
     secret_key = config_data.get('secret_key', {})
-
     if not api_key:
         logging.error("Porkbun API key not specified in config.json. " +
                       "Exiting...")
@@ -39,10 +64,13 @@ def validate_config(config_file):
         sys.exit(1)
 
 
+# Get the public IP address of the system that the script is running on
 def get_public_ip(url: str, headers: dict, body: dict) -> str:
+    # Use Porkbun's /ping endpoint to return a public IP
     request = requests.post(url=f"{url}/ping", headers=headers, json=body)
-    request.raise_for_status
+    request.raise_for_status()
 
+    # If Porkbun has any issues providing an IP, raise an exception
     if request.json()["status"] == "SUCCESS":
         public_ip = request.json()["yourIp"]
     else:
@@ -52,13 +80,17 @@ def get_public_ip(url: str, headers: dict, body: dict) -> str:
     return public_ip
 
 
+# Get a list of all DNS records for a given domain
 def get_records(url: str, headers: dict, body: dict, domain: str) -> list:
+    # Send a request to Porkbun's DNS API
     request = requests.post(url=f"{url}/dns/retrieve/{domain}",
                             headers=headers, json=body)
-    request.raise_for_status
+    request.raise_for_status()
 
+    # If Porkbun has any issues providing the records, raise an exception
     if request.json()["status"] == "SUCCESS":
         records = request.json()["records"]
+        # Filter the list to include only "A" records
         records = [r for r in records if r["type"] == "A"]
     else:
         records = "ERROR"
@@ -67,10 +99,14 @@ def get_records(url: str, headers: dict, body: dict, domain: str) -> list:
     return records
 
 
+# Determine which records specified in config.json need to be updated
 def compare_records(domain: str, current_records: dict,
                     ip: str, subdomains: list,
                     update_root: bool = False) -> list:
     to_update = []
+    # For each subdomain specified in the config file, compare the IP in
+    # its Porkbun DNS record with the IP of the current system.
+    # If the IP addresses don't match, add the record to a list.
     for sub in subdomains:
         records = [r for r in current_records if r["name"] == f"{sub}.{domain}"]
         for r in records:
@@ -80,6 +116,8 @@ def compare_records(domain: str, current_records: dict,
                 record_dict["subdomain"] = sub
                 to_update.append(record_dict)
 
+    # If the config file specifies that the root domain should be updated,
+    # check the domain in Porkbun and add to the list if it needs updating.
     if update_root:
         records = [r for r in current_records if r["name"] == f"{domain}"]
         for r in records:
@@ -92,11 +130,14 @@ def compare_records(domain: str, current_records: dict,
     return to_update
 
 
+# Update a DNS "A" record in Porkbun
 def update_record(url: str, headers: dict, body: dict, domain: str,
                   subdomain: str, ip: str) -> str:
+    # Add the public IP address to the request body
     body["content"] = ip
     body["ttl"] = "600"
 
+    # Send the update request to Porkbun
     try:
         request = requests.post(url=f"{url}/dns/editByNameType/{domain}/A/{subdomain}",
                                 headers=headers, json=body)
@@ -109,11 +150,14 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
 
 def main():
 
+    # Check the validity of config.json and exit if it's not valid
     validate_config(config_file)
 
+    # Open the config file for reading
     with open(config_file, 'r') as f:
         config_data = json.load(f)
 
+    # Add credentials to the request body
     body = {
         "apikey": config_data['api_key'],
         "secretapikey": config_data['secret_key']
@@ -123,20 +167,26 @@ def main():
         "Content-Type": "application/json"
     }
 
+    # Get the public IP of the current system
     public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body)
 
+    # Determine which DNS records in the config file need to be updated
     records_to_update = []
     for r in config_data["records"]:
+        # Get DNS records from Porkbun
         current_records = get_records(url=porkbun_url, headers=headers,
                                       body=body,
                                       domain=r["domain"])
+        # Compare Porkbun records with the current public IP
         r_to_update = compare_records(domain=r["domain"],
                                       subdomains=r["subdomains"],
                                       current_records=current_records,
                                       ip=public_ip,
                                       update_root=r["update_root"])
+        # Build the list of records to update
         records_to_update = r_to_update + records_to_update
 
+    # Update all records whose IP address differs from the public IP
     if records_to_update:
         for r in records_to_update:
             result = update_record(url=porkbun_url, headers=headers, body=body,
