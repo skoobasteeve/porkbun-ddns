@@ -24,7 +24,7 @@ def validate_config(config_file):
     except json.decoder.JSONDecodeError as x:
         logging.error(f"Invalid JSON in config.json: {x}")
         logging.error("Exiting...")
-        exit(1)
+        sys.exit(1)
 
     api_key = config_data.get('api_key', {})
     secret_key = config_data.get('secret_key', {})
