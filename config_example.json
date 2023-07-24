@@ -1,6 +1,7 @@
 {
     "api_key": "",
     "secret_key": "",
+    "healthchecks_url": "",
     "records": [
         {
             "domain": "domain01",

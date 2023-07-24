@@ -35,8 +35,23 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 
+def healthchecks(url: str, message: str, fail: bool = False):
+    if not url:
+        logging.info("No Healthchecks URL provided, skipping...")
+        return
+
+    if fail:
+        url = url + "/1"
+
+    try:
+        request = requests.post(url=url, data=message, timeout=10)
+        request.raise_for_status()
+    except Exception as x:
+        logging.error("Exception", x)
+
+
 # Check for any issues related to the provided configuration file
-def validate_config(config_file):
+def validate_config(config_file: str):
     # Check if config.json exists
     if not os.path.isfile(config_file):
         logging.error("config.json not found! Exiting...")
@@ -67,15 +82,18 @@ def validate_config(config_file):
 # Get the public IP address of the system that the script is running on
 def get_public_ip(url: str, headers: dict, body: dict) -> str:
     # Use Porkbun's /ping endpoint to return a public IP
-    request = requests.post(url=f"{url}/ping", headers=headers, json=body)
-    request.raise_for_status()
+    try:
+        request = requests.post(url=f"{url}/ping", headers=headers, json=body)
+        request.raise_for_status()
 
-    # If Porkbun has any issues providing an IP, raise an exception
-    if request.json()["status"] == "SUCCESS":
-        public_ip = request.json()["yourIp"]
-    else:
-        public_ip = "ERROR"
-        raise Exception(request.json())
+        # If Porkbun has any issues providing an IP, raise an exception
+        if request.json()["status"] == "SUCCESS":
+            public_ip = request.json()["yourIp"]
+        else:
+            public_ip = "ERROR"
+            raise Exception(request.json())
+    except Exception as x:
+        logging.error("Exception:", x)
 
     return public_ip
 
@@ -83,18 +101,21 @@ def get_public_ip(url: str, headers: dict, body: dict) -> str:
 # Get a list of all DNS records for a given domain
 def get_records(url: str, headers: dict, body: dict, domain: str) -> list:
     # Send a request to Porkbun's DNS API
-    request = requests.post(url=f"{url}/dns/retrieve/{domain}",
-                            headers=headers, json=body)
-    request.raise_for_status()
+    try:
+        request = requests.post(url=f"{url}/dns/retrieve/{domain}",
+                                headers=headers, json=body)
+        request.raise_for_status()
 
-    # If Porkbun has any issues providing the records, raise an exception
-    if request.json()["status"] == "SUCCESS":
-        records = request.json()["records"]
-        # Filter the list to include only "A" records
-        records = [r for r in records if r["type"] == "A"]
-    else:
-        records = "ERROR"
-        raise Exception(request.json())
+        # If Porkbun has any issues providing the records, raise an exception
+        if request.json()["status"] == "SUCCESS":
+            records = request.json()["records"]
+            # Filter the list to include only "A" records
+            records = [r for r in records if r["type"] == "A"]
+        else:
+            records = "ERROR"
+            raise Exception(request.json())
+    except Exception as x:
+        logging.error("Exception:", x)
 
     return records
 
@@ -156,6 +177,9 @@ def main():
     # Open the config file for reading
     with open(config_file, 'r') as f:
         config_data = json.load(f)
+
+    # Get the Healthchecks.io url from the config file
+    hc_url = config_data.get('healthchecks_url', {})
 
     # Add credentials to the request body
     body = {
