@@ -23,6 +23,7 @@ https://github.com/skoobasteeve/porkbun-ddns
 '''
 
 import requests
+from requests.adapters import HTTPAdapter, Retry
 import json
 import sys
 import logging
@@ -85,10 +86,11 @@ def validate_config(config_file: str):
 
 
 # Get the public IP address of the system that the script is running on
-def get_public_ip(url: str, headers: dict, body: dict, hc_url: str) -> str:
+def get_public_ip(url: str, headers: dict, body: dict,
+                  session: requests.sessions.Session, hc_url: str) -> str:
     # Use Porkbun's /ping endpoint to return a public IP
     try:
-        request = requests.post(url=f"{url}/ping", headers=headers, json=body)
+        request = session.post(url=f"{url}/ping", headers=headers, json=body)
         request.raise_for_status()
 
         # If Porkbun has any issues providing an IP, raise an exception
@@ -106,12 +108,13 @@ def get_public_ip(url: str, headers: dict, body: dict, hc_url: str) -> str:
 
 
 # Get a list of all DNS records for a given domain
-def get_records(url: str, headers: dict, body: dict, domain: str,
-                hc_url: str) -> list:
+def get_records(url: str, headers: dict, body: dict,
+                session: requests.sessions.Session,
+                domain: str, hc_url: str) -> list:
     try:
         # Send a request to Porkbun's DNS API
-        request = requests.post(url=f"{url}/dns/retrieve/{domain}",
-                                headers=headers, json=body)
+        request = session.post(url=f"{url}/dns/retrieve/{domain}",
+                               headers=headers, json=body)
         request.raise_for_status()
 
         # If Porkbun has any issues providing the records, raise an exception
@@ -161,7 +164,8 @@ def compare_records(domain: str, current_records: dict,
 
 
 # Update a DNS "A" record in Porkbun
-def update_record(url: str, headers: dict, body: dict, domain: str,
+def update_record(url: str, headers: dict, body: dict,
+                  session: requests.sessions.Session, domain: str,
                   subdomain: str, ip: str, hc_url: str) -> str:
     # Add the public IP address to the request body
     body["content"] = ip
@@ -169,8 +173,8 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
 
     # Send the update request to Porkbun
     try:
-        request = requests.post(url=f"{url}/dns/editByNameType/{domain}/A/{subdomain}",
-                                headers=headers, json=body)
+        request = session.post(url=f"{url}/dns/editByNameType/{domain}/A/{subdomain}",
+                               headers=headers, json=body)
         request.raise_for_status()
     except Exception as x:
         healthchecks(hc_url=hc_url, message=str(x), fail=True)
@@ -201,16 +205,22 @@ def main():
         "Content-Type": "application/json"
     }
 
+    # Create a requests session with retries for common Porkbun errors
+    session = requests.Session()
+    retries = Retry(total=5, backoff_factor=1,
+                    status_forcelist=[502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+
     # Get the public IP of the current system
     public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body,
-                              hc_url=hc_url)
+                              session=session, hc_url=hc_url)
 
     # Determine which DNS records in the config file need to be updated
     records_to_update = []
     for r in config_data["records"]:
         # Get DNS records from Porkbun
         current_records = get_records(url=porkbun_url, headers=headers,
-                                      body=body,
+                                      body=body, session=session,
                                       domain=r["domain"], hc_url=hc_url)
         # Compare Porkbun records with the current public IP
         r_to_update = compare_records(domain=r["domain"],
@@ -226,6 +236,7 @@ def main():
         hc_message = ""
         for r in records_to_update:
             result = update_record(url=porkbun_url, headers=headers, body=body,
+                                   session=session,
                                    domain=r["domain"],
                                    subdomain=r["subdomain"],
                                    ip=public_ip, hc_url=hc_url)
