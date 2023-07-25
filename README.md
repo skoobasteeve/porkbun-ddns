@@ -25,7 +25,7 @@ Create a file named `config.json` based on [config_example.json](config_example.
 
 ### Docker
 
-The [container](https://hub.docker.com/r/skoobasteeve/porkbun-ddns) checks for DNS updates every 5 minutes or whenever it's restarted. Mount a valid `config.json` as a volume and you're good-to-go.
+The [container](https://hub.docker.com/r/skoobasteeve/porkbun-ddns) checks for DNS updates every 15 minutes or whenever it's restarted. Mount a valid `config.json` as a volume and you're good-to-go.
 
 **One-liner**
 ``` shell
