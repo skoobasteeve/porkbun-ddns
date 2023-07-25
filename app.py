@@ -35,15 +35,19 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 
+# Send a ping to Healthchecks.io when task succeeds or fails
 def healthchecks(hc_url: str, message: str, fail: bool = False):
+    # Skip if url not provided in config
     if not hc_url:
         logging.info("No Healthchecks URL provided, skipping...")
         return
 
+    # If signaling a failure, add /1 to the URL so Healthchecks knows
     if fail:
         hc_url = hc_url + "/1"
 
     try:
+        # Send request to Healthchecks
         request = requests.post(url=hc_url, data=message, timeout=10)
         request.raise_for_status()
     except Exception as x:
