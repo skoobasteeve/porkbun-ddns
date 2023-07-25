@@ -35,16 +35,16 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 
-def healthchecks(url: str, message: str, fail: bool = False):
-    if not url:
+def healthchecks(hc_url: str, message: str, fail: bool = False):
+    if not hc_url:
         logging.info("No Healthchecks URL provided, skipping...")
         return
 
     if fail:
-        url = url + "/1"
+        hc_url = hc_url + "/1"
 
     try:
-        request = requests.post(url=url, data=message, timeout=10)
+        request = requests.post(url=hc_url, data=message, timeout=10)
         request.raise_for_status()
     except Exception as x:
         logging.error("Exception", x)
@@ -74,13 +74,15 @@ def validate_config(config_file: str):
                       "Exiting...")
         sys.exit(1)
     if not secret_key:
-        logging.error("Porkbun API secret key not specified in config.json. " +
-                      "Exiting...")
+        message = ("Porkbun API secret key not specified in config.json. " +
+                   "Exiting...")
+        logging.error(message)
+        healthchecks(hc_url=hc_url, message=message, fail=True)
         sys.exit(1)
 
 
 # Get the public IP address of the system that the script is running on
-def get_public_ip(url: str, headers: dict, body: dict) -> str:
+def get_public_ip(url: str, headers: dict, body: dict, hc_url: str) -> str:
     # Use Porkbun's /ping endpoint to return a public IP
     try:
         request = requests.post(url=f"{url}/ping", headers=headers, json=body)
@@ -94,12 +96,13 @@ def get_public_ip(url: str, headers: dict, body: dict) -> str:
             raise Exception(request.json())
     except Exception as x:
         logging.error("Exception:", x)
+        healthchecks(hc_url=hc_url, message=str(x), fail=True)
 
     return public_ip
 
 
 # Get a list of all DNS records for a given domain
-def get_records(url: str, headers: dict, body: dict, domain: str) -> list:
+def get_records(url: str, headers: dict, body: dict, domain: str, hc_url: str) -> list:
     # Send a request to Porkbun's DNS API
     try:
         request = requests.post(url=f"{url}/dns/retrieve/{domain}",
@@ -116,6 +119,7 @@ def get_records(url: str, headers: dict, body: dict, domain: str) -> list:
             raise Exception(request.json())
     except Exception as x:
         logging.error("Exception:", x)
+        healthchecks(hc_url=hc_url, message=str(x), fail=True)
 
     return records
 
@@ -153,7 +157,7 @@ def compare_records(domain: str, current_records: dict,
 
 # Update a DNS "A" record in Porkbun
 def update_record(url: str, headers: dict, body: dict, domain: str,
-                  subdomain: str, ip: str) -> str:
+                  subdomain: str, ip: str, hc_url: str) -> str:
     # Add the public IP address to the request body
     body["content"] = ip
     body["ttl"] = "600"
@@ -164,6 +168,7 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
                                 headers=headers, json=body)
         request.raise_for_status()
     except Exception as x:
+        healthchecks(hc_url=hc_url, message=str(x), fail=True)
         return str(f"Exception: {x}")
 
     return request.json()["status"]
@@ -172,7 +177,7 @@ def update_record(url: str, headers: dict, body: dict, domain: str,
 def main():
 
     # Check the validity of config.json and exit if it's not valid
-    validate_config(config_file)
+    validate_config(config_file=config_file)
 
     # Open the config file for reading
     with open(config_file, 'r') as f:
@@ -192,7 +197,7 @@ def main():
     }
 
     # Get the public IP of the current system
-    public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body)
+    public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body, hc_url=hc_url)
 
     # Determine which DNS records in the config file need to be updated
     records_to_update = []
@@ -200,7 +205,7 @@ def main():
         # Get DNS records from Porkbun
         current_records = get_records(url=porkbun_url, headers=headers,
                                       body=body,
-                                      domain=r["domain"])
+                                      domain=r["domain"], hc_url=hc_url)
         # Compare Porkbun records with the current public IP
         r_to_update = compare_records(domain=r["domain"],
                                       subdomains=r["subdomains"],
@@ -212,11 +217,12 @@ def main():
 
     # Update all records whose IP address differs from the public IP
     if records_to_update:
+        hc_message = ""
         for r in records_to_update:
             result = update_record(url=porkbun_url, headers=headers, body=body,
                                    domain=r["domain"],
                                    subdomain=r["subdomain"],
-                                   ip=public_ip)
+                                   ip=public_ip, hc_url=hc_url)
             if r['subdomain']:
                 log_str = f"{r['subdomain']}.{r['domain']} {result}"
             else:
@@ -224,10 +230,15 @@ def main():
 
             if "Exception:" in result:
                 logging.error(log_str)
+                healthchecks(hc_url=hc_url, message=str(log_str), fail=True)
             else:
                 logging.info(log_str)
+                hc_message = hc_message + f"\n{log_str}"
+        healthchecks(hc_url=hc_url, message=hc_message, fail=False)
     else:
-        logging.info("All records are up-to-date.")
+        message = "All records are up-to-date."
+        logging.info(message)
+        healthchecks(hc_url=hc_url, message=message, fail=False)
 
 
 if __name__ == "__main__":
