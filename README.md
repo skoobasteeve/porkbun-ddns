@@ -7,6 +7,7 @@ Minimal Dynamic DNS client for Porkbun.
 Create a file named `config.json` based on [config_example.json](config_example.json) in this repo and update it with the below information:
 - `api_key` - Porkbun API key
 - `secret_key` - Porkbun API secret key
+- `healthchecks_url` - (optional ) Healthchecks.io URL to monitor for issues
 - At least one domain block within `records` similar to the below:
   ``` json
   "records": [
