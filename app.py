@@ -77,7 +77,6 @@ def validate_config(config_file: str):
         message = ("Porkbun API secret key not specified in config.json. " +
                    "Exiting...")
         logging.error(message)
-        healthchecks(hc_url=hc_url, message=message, fail=True)
         sys.exit(1)
 
 
@@ -97,14 +96,16 @@ def get_public_ip(url: str, headers: dict, body: dict, hc_url: str) -> str:
     except Exception as x:
         logging.error("Exception:", x)
         healthchecks(hc_url=hc_url, message=str(x), fail=True)
+        sys.exit(1)
 
     return public_ip
 
 
 # Get a list of all DNS records for a given domain
-def get_records(url: str, headers: dict, body: dict, domain: str, hc_url: str) -> list:
-    # Send a request to Porkbun's DNS API
+def get_records(url: str, headers: dict, body: dict, domain: str,
+                hc_url: str) -> list:
     try:
+        # Send a request to Porkbun's DNS API
         request = requests.post(url=f"{url}/dns/retrieve/{domain}",
                                 headers=headers, json=body)
         request.raise_for_status()
@@ -197,7 +198,8 @@ def main():
     }
 
     # Get the public IP of the current system
-    public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body, hc_url=hc_url)
+    public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body,
+                              hc_url=hc_url)
 
     # Determine which DNS records in the config file need to be updated
     records_to_update = []
