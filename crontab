@@ -1,1 +1,1 @@
-*/15 * * * * python /usr/src/app/app.py
+*/19 * * * * python /usr/src/app/app.py
