@@ -208,7 +208,8 @@ def main():
     # Create a requests session with retries for common Porkbun errors
     session = requests.Session()
     retries = Retry(total=5, backoff_factor=1,
-                    status_forcelist=[502, 503, 504])
+                    status_forcelist=[502, 503, 504],
+                    method_whitelist=['POST'])
     session.mount('https://', HTTPAdapter(max_retries=retries))
 
     # Get the public IP of the current system
