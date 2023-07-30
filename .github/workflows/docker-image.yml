@@ -36,6 +36,11 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: skoobasteeve/porkbun-ddns
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
