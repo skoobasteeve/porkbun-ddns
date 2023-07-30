@@ -8,11 +8,6 @@ on:
       - '**/config.json.example'
       - '.github/workflows/*'
   workflow_dispatch:
-    inputs:
-      tags:
-        description: 'Manual version tag'
-        required: false
-        type: string
 
 env:
   IMAGE_NAME: ${{ github.repository }}
