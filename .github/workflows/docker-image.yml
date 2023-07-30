@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '**/README.md'
       - '**/config.json.example'
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: ${{ github.repository }}
