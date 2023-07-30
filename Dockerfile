@@ -5,7 +5,8 @@ WORKDIR /usr/src/app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+ENV CRON_INTERVAL=20
+
 COPY . .
-RUN crontab crontab
 
 CMD [ "/bin/sh", "entrypoint.sh" ]

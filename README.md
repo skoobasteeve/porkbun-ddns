@@ -43,8 +43,14 @@ services:
     init: true
     volumes:
       - $PWD/config.json:/usr/src/app/config.json
+    environment:
+      - CRON_INTERVAL=20 #Default, in minutes
     restart: unless-stopped
 ```
+
+#### Customize interval
+
+The porkbun-ddns Docker image checks your IP for changes every 20 minutes by default. If you'd like to change this, set the `CRON_INTERVAL` variable in your `docker run` command or `docker-compose.yml`.
 
 ### Python
 
