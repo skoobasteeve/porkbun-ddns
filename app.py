@@ -263,10 +263,11 @@ def main():
                                    subdomain=r["subdomain"],
                                    ip=public_ip, hc_url=hc_url,
                                    create=r["create"])
+            action = "CREATE" if r["create"] else "UPDATE"
             if r['subdomain']:
-                log_str = f"{r['subdomain']}.{r['domain']} {result}"
+                log_str = f"{action} {r['subdomain']}.{r['domain']} {result}"
             else:
-                log_str = f"{r['domain']} {result}"
+                log_str = f"{action} {r['domain']} {result}"
 
             if "Exception:" in result:
                 logging.error(log_str)
