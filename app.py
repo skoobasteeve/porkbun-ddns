@@ -177,7 +177,7 @@ def compare_records(domain: str, current_records: dict,
     return to_update
 
 
-# Update a DNS "A" record in Porkbun
+# Update or create a DNS "A" record in Porkbun
 def update_record(url: str, headers: dict, body: dict,
                   session: requests.sessions.Session, domain: str,
                   subdomain: str, ip: str, hc_url: str, create=False) -> str:
@@ -213,6 +213,9 @@ def main():
     with open(config_file, 'r') as f:
         config_data = json.load(f)
 
+    # Get verbose_output boolean from config file
+    verbose_output = config_data.get('verbose_output', False)
+
     # Get the Healthchecks.io url from the config file
     hc_url = config_data.get('healthchecks_url', {})
 
@@ -237,7 +240,7 @@ def main():
     public_ip = get_public_ip(url=porkbun_url, headers=headers, body=body,
                               session=session, hc_url=hc_url)
 
-    # Determine which DNS records in the config file need to be updated
+    # Determine which DNS records in the config file need to be updated/created
     records_to_update = []
     for r in config_data["records"]:
         # Get DNS records from Porkbun
@@ -253,7 +256,8 @@ def main():
         # Build the list of records to update or create
         records_to_update = r_to_update + records_to_update
 
-    # Update all records whose IP address differs from the public IP
+    # Update all records whose IP address differs from the public IP or create
+    # them if they don't exist
     if records_to_update:
         hc_message = ""
         for r in records_to_update:
@@ -278,7 +282,8 @@ def main():
         healthchecks(hc_url=hc_url, message=hc_message, fail=False)
     else:
         message = "All records are up-to-date."
-        logging.info(message)
+        if verbose_output:
+            logging.info(message)
         healthchecks(hc_url=hc_url, message=message, fail=False)
 
 
