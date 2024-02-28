@@ -99,6 +99,22 @@ def get_public_ip(url: str, headers: dict, body: dict,
         else:
             public_ip = "ERROR"
             raise Exception(request.json())
+
+    except requests.exceptions.RequestException:
+        # Use icanhazip.com as a backup if Porkbun's endpoint is down
+        logging.info("Porkbun /ping endpoint not responding, " +
+                     "falling back to icanhazip.com")
+        try:
+            request = session.get("http://icanhazip.com")
+            request.raise_for_status()
+            public_ip = request.text.rstrip()
+
+            return public_ip
+
+        except Exception as x:
+            logging.error("Exception:", x)
+            healthchecks(hc_url=hc_url, message=str(x), fail=True)
+            sys.exit(1)
     except Exception as x:
         logging.error("Exception:", x)
         healthchecks(hc_url=hc_url, message=str(x), fail=True)
